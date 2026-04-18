@@ -1,5 +1,5 @@
-const prisma = require("../prisma");
-
+// const prisma = require("../prisma");
+const prisma = require("./prisma");
 /**
  * checkExist({
  *  model: "user",
