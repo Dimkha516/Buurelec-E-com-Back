@@ -51,8 +51,10 @@ const modelIncludes = {
     user: { select: { id: true, firstName: true, lastName: true, email: true } },
     shippingAddress: true,
     billingAddress: true,
+    pickupPoint: true,
     items: { include: { product: { select: { id: true, name: true, slug: true } } } },
   },
+  pickupPoint: {},
   orderItem: {
     order: { select: { id: true, orderNumber: true, status: true } },
     product: { select: { id: true, name: true, slug: true } },
