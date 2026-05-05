@@ -11,6 +11,9 @@ router.use(authenticate);
 // GET_MY_CART:
 router.get("/", cartController.getMyCart);
 
+// GET_CART_SUMMARY (totals + per-product details for checkout review):
+router.get("/summary", cartController.getCartSummary);
+
 // ADD_TO_CART:
 router.post(
   "/items",

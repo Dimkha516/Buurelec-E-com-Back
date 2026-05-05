@@ -51,6 +51,41 @@ const addToCart = asyncHandler(async (req, res) => {
   return success(res, 201, "Product added to cart", item);
 });
 
+const getCartSummary = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const cart = await getOrCreateCart(userId);
+
+  const items = cart.items.map((item) => {
+    const unitPrice = Number(item.product.price);
+    return {
+      productId: item.productId,
+      productName: item.product.name,
+      slug: item.product.slug,
+      imageUrl: item.product.images?.[0]?.url ?? null,
+      unitPrice,
+      quantity: item.quantity,
+      subtotal: Number((unitPrice * item.quantity).toFixed(2)),
+      stock: item.product.stock,
+      isActive: item.product.isActive,
+    };
+  });
+
+  const subtotal = Number(
+    items.reduce((sum, i) => sum + i.subtotal, 0).toFixed(2),
+  );
+  const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0);
+
+  return success(res, 200, "Cart summary retrieved successfully", {
+    items,
+    itemsCount: items.length,
+    totalQuantity,
+    subtotal,
+    shippingCost: 0,
+    taxAmount: 0,
+    totalAmount: subtotal,
+  });
+});
+
 const removeFromCart = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const { productId } = req.params;
@@ -70,4 +105,10 @@ const removeFromCart = asyncHandler(async (req, res) => {
   return success(res, 200, "Product removed from cart");
 });
 
-module.exports = { ...base, getMyCart, addToCart, removeFromCart };
+module.exports = {
+  ...base,
+  getMyCart,
+  getCartSummary,
+  addToCart,
+  removeFromCart,
+};

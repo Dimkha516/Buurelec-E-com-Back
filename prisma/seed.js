@@ -167,6 +167,7 @@ async function wipeDatabase() {
   await prisma.wishlistItem.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.pickupPoint.deleteMany();
   await prisma.dealProduct.deleteMany();
   await prisma.deal.deleteMany();
   await prisma.review.deleteMany();
@@ -327,14 +328,24 @@ async function main() {
   ]);
   console.log(`Created ${cartItems.length} cart items`);
 
+  // ── PICKUP POINTS ──
+  const pickupPoints = await Promise.all([
+    prisma.pickupPoint.create({ data: { name: "Buurelec Plateau", address: "12 Rue Carnot", city: "Dakar", phone: "+221338234567" } }),
+    prisma.pickupPoint.create({ data: { name: "Buurelec Almadies", address: "Route des Almadies", city: "Dakar", phone: "+221338901234" } }),
+    prisma.pickupPoint.create({ data: { name: "Buurelec Thiès", address: "Avenue Léopold Sédar Senghor", city: "Thiès", phone: "+221339512345" } }),
+  ]);
+  console.log(`Created ${pickupPoints.length} pickup points`);
+
   // ── ORDERS ──
   const orders = await Promise.all([
     prisma.order.create({
       data: {
         orderNumber: "BUR-20260401-001", userId: users[1].id, status: "DELIVERED",
         subtotal: 1199, shippingCost: 20, taxAmount: 0, totalAmount: 1219,
+        deliveryMethod: "HOME_DELIVERY",
         shippingAddressId: addresses[1].id, billingAddressId: addresses[1].id,
-        paymentMethod: "Orange Money", paymentStatus: "PAID",
+        paymentMethod: "ORANGE_MONEY", paymentTiming: "PREPAID", paymentStatus: "PAID",
+        deliveryDate: new Date("2026-03-25"),
         paidAt: new Date("2026-03-20"), deliveredAt: new Date("2026-03-25"),
       },
     }),
@@ -342,22 +353,31 @@ async function main() {
       data: {
         orderNumber: "BUR-20260401-002", userId: users[2].id, status: "SHIPPED",
         subtotal: 2499, shippingCost: 30, taxAmount: 0, totalAmount: 2529,
-        shippingAddressId: addresses[2].id, paymentMethod: "Wave", paymentStatus: "PAID",
+        deliveryMethod: "HOME_DELIVERY",
+        shippingAddressId: addresses[2].id,
+        paymentMethod: "WAVE", paymentTiming: "PREPAID", paymentStatus: "PAID",
+        deliveryDate: daysFromNow(2),
         paidAt: new Date("2026-03-28"), shippedAt: new Date("2026-03-30"),
       },
     }),
     prisma.order.create({
       data: {
         orderNumber: "BUR-20260401-003", userId: users[3].id, status: "PENDING",
-        subtotal: 499, shippingCost: 15, taxAmount: 0, totalAmount: 514,
-        shippingAddressId: addresses[3].id, paymentMethod: "Carte bancaire", paymentStatus: "PENDING",
+        subtotal: 499, shippingCost: 0, taxAmount: 0, totalAmount: 499,
+        deliveryMethod: "PICKUP_POINT",
+        pickupPointId: pickupPoints[0].id,
+        paymentMethod: "BANK_CARD", paymentTiming: "PREPAID", paymentStatus: "PENDING",
+        deliveryDate: daysFromNow(3),
       },
     }),
     prisma.order.create({
       data: {
         orderNumber: "BUR-20260401-004", userId: users[1].id, status: "CANCELLED",
         subtotal: 249, shippingCost: 10, taxAmount: 0, totalAmount: 259,
-        shippingAddressId: addresses[1].id, paymentMethod: "Orange Money", paymentStatus: "REFUNDED",
+        deliveryMethod: "HOME_DELIVERY",
+        shippingAddressId: addresses[1].id,
+        paymentMethod: "ORANGE_MONEY", paymentTiming: "PREPAID", paymentStatus: "REFUNDED",
+        deliveryDate: new Date("2026-03-18"),
         cancelledAt: new Date("2026-03-15"),
       },
     }),

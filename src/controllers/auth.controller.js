@@ -8,6 +8,8 @@ const {
   rotateRefreshToken,
   revokeRefreshToken,
 } = require("../utils/jwt");
+const { sendEmail } = require("../services/mailService");
+const welcomeTemplate = require("../templates/welcomeTemplate");
 
 const SALT_ROUNDS = 10;
 
@@ -24,6 +26,19 @@ exports.register = asyncHandler(async (req, res) => {
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
+  const mailing = await sendEmail({
+    to: email,
+    subject: "Bienvenue",
+    html: welcomeTemplate(firstName),
+  });
+
+  if(!mailing.success) {
+    return res.status(500).json({
+      message: "Erreur envoi mail",
+      error: mailing.error
+    })
+  }
+  
   const user = await prisma.user.create({
     data: { email, passwordHash, firstName, lastName, phone },
   });
