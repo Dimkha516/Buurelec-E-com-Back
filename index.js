@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // });
 // app.use(`${baseUrl}`, limiter);
 
-app.use(`${baseUrl}`);
+app.use(`${baseUrl}`, (req, res, next) => next());
 
 // ROUTES CALLING:
 const authRouter = require("./src/routes/auth.routes");
