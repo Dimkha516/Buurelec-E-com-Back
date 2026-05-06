@@ -6,6 +6,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.NODE_MAIL_USER_EMAIL,
     pass: process.env.NODE_MAIL_PASS,
   },
+  family: 4,
 });
 
 module.exports = transporter;
