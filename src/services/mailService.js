@@ -3,7 +3,8 @@ const transporter = require("../config/nodeMailer");
 
 const sendEmail = async ({ to, subject, html }) => {
   try {
-    const info = await transporter.sendMail({
+    // const info = await transporter.sendMail({
+    const info = await transporter.sendEmail({
       from: process.env.EMAIL_FROM,
       to,
       subject,
