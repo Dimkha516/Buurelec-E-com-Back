@@ -25,11 +25,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // // Rate Limiting:
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 request per IP
-});
-app.use(`${baseUrl}`, limiter);
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // 100 request per IP
+// });
+// app.use(`${baseUrl}`, limiter);
+
+app.use(`${baseUrl}`, (req, res, next) => next());
 
 // ROUTES CALLING:
 const authRouter = require("./src/routes/auth.routes");
