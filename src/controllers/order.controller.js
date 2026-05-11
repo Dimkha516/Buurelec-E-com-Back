@@ -4,6 +4,9 @@ const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
 const { sendEmail } = require("../services/mailService");
 const orderConfirmationTemplate = require("../templates/orderConfirmationTemplate");
+const orderCancellationTemplate = require("../templates/orderCancellationTemplate");
+
+const CANCELLABLE_STATUSES = ["PENDING", "CONFIRMED"];
 
 const base = crudController("order");
 
@@ -163,11 +166,70 @@ const checkout = asyncHandler(async (req, res) => {
 const getMyOrders = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const orders = await prisma.order.findMany({
-    where: { userId },
+    where: { userId, status: { not: "CANCELLED" } },
     include: orderInclude,
     orderBy: { createdAt: "desc" },
   });
   return success(res, 200, "Orders retrieved successfully", orders);
+});
+
+const cancelOrder = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  const order = await prisma.order.findFirst({
+    where: { id, userId },
+    include: { items: true },
+  });
+  if (!order) return error(res, 404, "Order not found");
+
+  if (order.status === "CANCELLED") {
+    return error(res, 400, "Order is already cancelled");
+  }
+  if (!CANCELLABLE_STATUSES.includes(order.status)) {
+    return error(
+      res,
+      400,
+      `Order cannot be cancelled at status ${order.status}`,
+    );
+  }
+
+  const cancelled = await prisma.$transaction(async (tx) => {
+    // Restore stock for each item
+    await Promise.all(
+      order.items.map((item) =>
+        tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        }),
+      ),
+    );
+
+    return tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: "CANCELLED",
+        cancelledAt: new Date(),
+        paymentStatus: order.paymentStatus === "PAID" ? "REFUNDED" : order.paymentStatus,
+      },
+      include: orderInclude,
+    });
+  });
+
+  // Send cancellation email (fire-and-forget)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, firstName: true },
+  });
+  if (user) {
+    sendEmail({
+      to: user.email,
+      subject: `Annulation de votre commande ${cancelled.orderNumber}`,
+      html: orderCancellationTemplate({ user, order: cancelled }),
+    }).catch((e) => console.error("Order cancellation email failed:", e));
+  }
+
+  return success(res, 200, "Order cancelled successfully", cancelled);
 });
 
 const getMyOrder = asyncHandler(async (req, res) => {
@@ -181,4 +243,4 @@ const getMyOrder = asyncHandler(async (req, res) => {
   return success(res, 200, "Order retrieved successfully", order);
 });
 
-module.exports = { ...base, checkout, getMyOrders, getMyOrder };
+module.exports = { ...base, checkout, getMyOrders, getMyOrder, cancelOrder };

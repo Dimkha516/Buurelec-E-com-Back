@@ -21,4 +21,7 @@ router.get("/", orderController.getMyOrders);
 // GET_MY_ORDER_BY_ID:
 router.get("/:id", orderController.getMyOrder);
 
+// CANCEL_MY_ORDER:
+router.post("/:id/cancel", orderController.cancelOrder);
+
 module.exports = router;
