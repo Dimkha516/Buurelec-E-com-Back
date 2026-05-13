@@ -58,6 +58,9 @@ const bannersRouter = require("./src/routes/banner.routes");
 const newsletterSubscribersRouter = require("./src/routes/newsletterSubscriber.routes");
 const contactMessagesRouter = require("./src/routes/contactMessage.routes");
 
+// ADMIN ROUTES:
+const adminOrdersRouter = require("./src/routes/admin/order.routes");
+
 // ROUTES USE:
 app.use(`${baseUrl}/auth`, authRouter);
 app.use(`${baseUrl}/users`, usersRouter);
@@ -82,6 +85,9 @@ app.use(`${baseUrl}/deal-products`, dealProductsRouter);
 app.use(`${baseUrl}/banners`, bannersRouter);
 app.use(`${baseUrl}/newsletter-subscribers`, newsletterSubscribersRouter);
 app.use(`${baseUrl}/contact-messages`, contactMessagesRouter);
+
+// ADMIN MOUNTS:
+app.use(`${baseUrl}/admin/orders`, adminOrdersRouter);
 
 // CLOSING LINE: Run Server
 app.listen(PORT, () => {
