@@ -60,6 +60,7 @@ const contactMessagesRouter = require("./src/routes/contactMessage.routes");
 
 // ADMIN ROUTES:
 const adminOrdersRouter = require("./src/routes/admin/order.routes");
+const adminProductsRouter = require("./src/routes/admin/product.routes");
 
 // ROUTES USE:
 app.use(`${baseUrl}/auth`, authRouter);
@@ -88,6 +89,7 @@ app.use(`${baseUrl}/contact-messages`, contactMessagesRouter);
 
 // ADMIN MOUNTS:
 app.use(`${baseUrl}/admin/orders`, adminOrdersRouter);
+app.use(`${baseUrl}/admin/products`, adminProductsRouter);
 
 // CLOSING LINE: Run Server
 app.listen(PORT, () => {
