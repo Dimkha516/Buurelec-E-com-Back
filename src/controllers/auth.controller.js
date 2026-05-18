@@ -101,3 +101,13 @@ exports.logout = asyncHandler(async (req, res) => {
   if (refreshToken) await revokeRefreshToken(refreshToken);
   return success(res, 200, "Logged out");
 });
+
+exports.verifyAdmin = asyncHandler(async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user || !user.isActive) return error(res, 401, "Account not found or disabled");
+  if (user.role !== "ADMIN") return error(res, 403, "Admin access required");
+  return success(res, 200, "Admin verified", {
+    isAdmin: true,
+    user: sanitizeUser(user),
+  });
+});
