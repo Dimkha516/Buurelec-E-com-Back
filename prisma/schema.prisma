@@ -63,7 +63,7 @@ model RefreshToken {
 
 model Address {
   id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  userId    String?  @map("user_id")
   label     String? // ex: "Maison", "Bureau"
   firstName String   @map("first_name")
   lastName  String   @map("last_name")
@@ -77,7 +77,7 @@ model Address {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   shippingOrders Order[] @relation("ShippingAddress")
   billingOrders  Order[] @relation("BillingAddress")
 
@@ -251,7 +251,11 @@ model CartItem {
 model Order {
   id                String         @id @default(uuid())
   orderNumber       String         @unique @map("order_number") // ex: "BUR-20260325-001"
-  userId            String         @map("user_id")
+  userId            String?        @map("user_id")
+  guestEmail        String?        @map("guest_email")
+  guestFirstName    String?        @map("guest_first_name")
+  guestLastName     String?        @map("guest_last_name")
+  guestPhone        String?        @map("guest_phone")
   status            OrderStatus    @default(PENDING)
   subtotal          Decimal        @db.Decimal(10, 2)
   shippingCost      Decimal        @default(0) @map("shipping_cost") @db.Decimal(10, 2)
@@ -273,7 +277,7 @@ model Order {
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  user            User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
   shippingAddress Address?     @relation("ShippingAddress", fields: [shippingAddressId], references: [id], onDelete: SetNull)
   billingAddress  Address?     @relation("BillingAddress", fields: [billingAddressId], references: [id], onDelete: SetNull)
   pickupPoint     PickupPoint? @relation(fields: [pickupPointId], references: [id], onDelete: SetNull)
