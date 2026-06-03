@@ -163,6 +163,147 @@ const checkout = asyncHandler(async (req, res) => {
   return success(res, 201, "Order placed successfully", order);
 });
 
+const guestCheckout = asyncHandler(async (req, res) => {
+  const {
+    items,
+    guest,
+    deliveryMethod,
+    address,
+    pickupPointId,
+    paymentMethod,
+    paymentTiming,
+    deliveryDate,
+    notes,
+  } = req.body;
+
+  // 1. Fetch products in one query and build a map
+  const productIds = items.map((i) => i.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+  });
+  const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
+
+  // 2. Validate each item
+  for (const item of items) {
+    const product = productMap[item.productId];
+    if (!product) {
+      return error(res, 404, `Product ${item.productId} not found`);
+    }
+    if (!product.isActive) {
+      return error(res, 400, `Product "${product.name}" is no longer available`);
+    }
+    if (product.stock < item.quantity) {
+      return error(
+        res,
+        400,
+        `Insufficient stock for "${product.name}" (available: ${product.stock})`,
+      );
+    }
+  }
+
+  // 3. Verify pickup point if applicable
+  if (deliveryMethod === "PICKUP_POINT") {
+    const pp = await prisma.pickupPoint.findUnique({
+      where: { id: pickupPointId },
+    });
+    if (!pp || !pp.isActive) {
+      return error(res, 404, "Pickup point not available");
+    }
+  }
+
+  // 4. Compute totals
+  const subtotal = items.reduce(
+    (sum, item) =>
+      sum + Number(productMap[item.productId].price) * item.quantity,
+    0,
+  );
+  const shippingCost = SHIPPING_COSTS[deliveryMethod] ?? 0;
+  const totalAmount = subtotal + shippingCost;
+
+  // 5. Generate order number
+  const orderNumber = await generateOrderNumber();
+
+  // 6. Create address (if HOME_DELIVERY) + order + items + decrement stock in a transaction
+  const order = await prisma.$transaction(async (tx) => {
+    let shippingAddressId = null;
+    if (deliveryMethod === "HOME_DELIVERY") {
+      const addr = await tx.address.create({
+        data: {
+          userId: null,
+          firstName: guest.firstName,
+          lastName: guest.lastName,
+          phone: guest.phone,
+          street: address.street,
+          city: address.city,
+          zipCode: address.zipCode,
+          country: address.country,
+          state: address.state || null,
+        },
+      });
+      shippingAddressId = addr.id;
+    }
+
+    const created = await tx.order.create({
+      data: {
+        orderNumber,
+        userId: null,
+        guestEmail: guest.email,
+        guestFirstName: guest.firstName,
+        guestLastName: guest.lastName,
+        guestPhone: guest.phone,
+        status: "PENDING",
+        subtotal,
+        shippingCost,
+        taxAmount: 0,
+        totalAmount,
+        deliveryMethod,
+        shippingAddressId,
+        billingAddressId: shippingAddressId,
+        pickupPointId: deliveryMethod === "PICKUP_POINT" ? pickupPointId : null,
+        paymentMethod,
+        paymentTiming,
+        paymentStatus: "PENDING",
+        deliveryDate: new Date(deliveryDate),
+        notes: notes || null,
+        items: {
+          create: items.map((item) => ({
+            productId: item.productId,
+            productName: productMap[item.productId].name,
+            unitPrice: productMap[item.productId].price,
+            quantity: item.quantity,
+            totalPrice:
+              Number(productMap[item.productId].price) * item.quantity,
+          })),
+        },
+      },
+      include: orderInclude,
+    });
+
+    await Promise.all(
+      items.map((item) =>
+        tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
+    return created;
+  });
+
+  // 7. Fire-and-forget confirmation email
+  sendEmail({
+    to: guest.email,
+    subject: `Confirmation de commande ${order.orderNumber}`,
+    html: orderConfirmationTemplate({
+      user: { firstName: guest.firstName, email: guest.email },
+      order,
+    }),
+  }).catch((e) => console.error("Guest order email failed:", e));
+
+  return success(res, 201, "Order placed successfully", order);
+});
+
 const getMyOrders = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const orders = await prisma.order.findMany({
@@ -243,4 +384,11 @@ const getMyOrder = asyncHandler(async (req, res) => {
   return success(res, 200, "Order retrieved successfully", order);
 });
 
-module.exports = { ...base, checkout, getMyOrders, getMyOrder, cancelOrder };
+module.exports = {
+  ...base,
+  checkout,
+  guestCheckout,
+  getMyOrders,
+  getMyOrder,
+  cancelOrder,
+};
