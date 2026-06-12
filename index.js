@@ -14,12 +14,28 @@ const PORT = process.env.PORT;
 
 // Middlewares:
 app.use(helmet());
+
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // !origin autorise les requêtes sans Origin (Postman, curl, health checks serveur-à-serveur)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origine non autorisée par CORS : ${origin}`));
+      }
+    },
     credentials: true,
   }),
 );
+// app.use(
+//   cors({
+//     origin: process.env.FRONTEND_URL,
+//     credentials: true,
+//   }),
+// );
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
