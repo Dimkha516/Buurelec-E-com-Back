@@ -82,6 +82,8 @@ const adminBrandsRouter = require("./src/routes/admin/brand.routes");
 const adminCategoriesRouter = require("./src/routes/admin/category.routes");
 const adminPickupPointsRouter = require("./src/routes/admin/pickupPoint.routes");
 const adminUsersRouter = require("./src/routes/admin/user.routes");
+const adminBannersRouter = require("./src/routes/admin/banner.routes");
+const adminDealsRouter = require("./src/routes/admin/deal.routes");
 
 // ROUTES USE:
 app.use(`${baseUrl}/auth`, authRouter);
@@ -116,6 +118,8 @@ app.use(`${baseUrl}/admin/brands`, adminBrandsRouter);
 app.use(`${baseUrl}/admin/categories`, adminCategoriesRouter);
 app.use(`${baseUrl}/admin/pickup-points`, adminPickupPointsRouter);
 app.use(`${baseUrl}/admin/users`, adminUsersRouter);
+app.use(`${baseUrl}/admin/banners`, adminBannersRouter);
+app.use(`${baseUrl}/admin/deals`, adminDealsRouter);
 
 // CLOSING LINE: Run Server
 app.listen(PORT, () => {
