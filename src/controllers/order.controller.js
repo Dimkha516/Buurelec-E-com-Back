@@ -34,7 +34,8 @@ const generateOrderNumber = async () => {
   const count = await prisma.order.count({
     where: { createdAt: { gte: startOfDay, lt: endOfDay } },
   });
-  return `BUR-${datePart}-${String(count + 1).padStart(3, "0")}`;
+  // return `BUR-${datePart}-${String(count + 1).padStart(3, "0")}`;
+  return `SO-${datePart}-${String(count + 1).padStart(3, "0")}`;
 };
 
 const checkout = asyncHandler(async (req, res) => {
