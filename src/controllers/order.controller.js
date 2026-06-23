@@ -3,6 +3,7 @@ const prisma = require("../utils/prisma");
 const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
 const { sendEmail } = require("../services/mailService");
+const { getSettings } = require("../services/settingsService");
 const orderConfirmationTemplate = require("../templates/orderConfirmationTemplate");
 const orderCancellationTemplate = require("../templates/orderCancellationTemplate");
 
@@ -10,9 +11,11 @@ const CANCELLABLE_STATUSES = ["PENDING", "CONFIRMED"];
 
 const base = crudController("order");
 
-const SHIPPING_COSTS = {
-  HOME_DELIVERY: 2000,
-  PICKUP_POINT: 0,
+const resolveShippingCost = async (deliveryMethod) => {
+  const settings = await getSettings();
+  if (deliveryMethod === "HOME_DELIVERY") return Number(settings.homeDeliveryCost);
+  if (deliveryMethod === "PICKUP_POINT") return Number(settings.pickupDeliveryCost);
+  return 0;
 };
 
 const orderInclude = {
@@ -101,7 +104,7 @@ const checkout = asyncHandler(async (req, res) => {
     (sum, item) => sum + Number(item.product.price) * item.quantity,
     0,
   );
-  const shippingCost = SHIPPING_COSTS[deliveryMethod] ?? 0;
+  const shippingCost = await resolveShippingCost(deliveryMethod);
   const totalAmount = subtotal + shippingCost;
 
   // 5. Generate order number
@@ -218,7 +221,7 @@ const guestCheckout = asyncHandler(async (req, res) => {
       sum + Number(productMap[item.productId].price) * item.quantity,
     0,
   );
-  const shippingCost = SHIPPING_COSTS[deliveryMethod] ?? 0;
+  const shippingCost = await resolveShippingCost(deliveryMethod);
   const totalAmount = subtotal + shippingCost;
 
   // 5. Generate order number
