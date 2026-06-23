@@ -463,3 +463,43 @@ enum ContactMessageStatus {
   REPLIED
   ARCHIVED
 }
+
+// ============================================================
+// SITE SETTINGS (SINGLETON)
+// ============================================================
+
+model SiteSetting {
+  // Singleton: always id = "singleton". One row only.
+  id String @id
+
+  // Contact
+  contactEmail   String? @map("contact_email")
+  contactPhone   String? @map("contact_phone")
+  contactAddress String? @map("contact_address")
+  contactCity    String? @map("contact_city")
+  contactCountry String? @map("contact_country")
+
+  // Branding
+  siteName    String  @default("BuurElec") @map("site_name")
+  siteTagline String? @map("site_tagline")
+  logoUrl     String? @map("logo_url")
+  faviconUrl  String? @map("favicon_url")
+
+  // Social media
+  facebookUrl    String? @map("facebook_url")
+  instagramUrl   String? @map("instagram_url")
+  whatsappNumber String? @map("whatsapp_number")
+  tiktokUrl      String? @map("tiktok_url")
+  twitterUrl     String? @map("twitter_url")
+  youtubeUrl     String? @map("youtube_url")
+
+  // Business & shipping
+  currency           String  @default("XOF")
+  homeDeliveryCost   Decimal @default(2000) @map("home_delivery_cost") @db.Decimal(10, 2)
+  pickupDeliveryCost Decimal @default(0) @map("pickup_delivery_cost") @db.Decimal(10, 2)
+  defaultTaxRate     Decimal @default(0) @map("default_tax_rate") @db.Decimal(5, 2)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

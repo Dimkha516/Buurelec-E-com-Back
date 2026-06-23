@@ -17,7 +17,7 @@ const baseSchema = {
     "string.min": "Subject must be at least 2 characters",
     "any.required": "Subject is required",
   }),
-  message: Joi.string().min(10).required().messages({
+  message: Joi.string().min(5).required().messages({
     "string.min": "Message must be at least 10 characters",
     "any.required": "Message is required",
   }),
