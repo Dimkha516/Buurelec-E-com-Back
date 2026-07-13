@@ -39,7 +39,7 @@ exports.register = asyncHandler(async (req, res) => {
       error: mailing.error
     })
   }
-  
+
   const user = await prisma.user.create({
     data: { email, passwordHash, firstName, lastName, phone },
   });
