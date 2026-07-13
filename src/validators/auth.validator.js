@@ -16,15 +16,17 @@ const registerSchema = Joi.object({
   firstName: Joi.string().min(2).max(100).required().messages({
     "string.min": "First name must be at least 2 characters",
     "any.required": "First name is required",
-    "any.empty": "Le prénom est obligatoire",
+    "string.empty": "Le prénom est obligatoire",
     "any.required": "Le prénom est obligatoire",
   }),
   lastName: Joi.string().min(2).max(100).required().messages({
     "string.min": "Last name must be at least 2 characters",
-    "any.empty": "Le nom est requis",
+    "string.empty": "Le nom est requis",
     "any.required": "Le nom est requis",
   }),
   phone: Joi.string()
+    .trim()
+    .replace(/\s+/g, "")
     .pattern(/^(77|78|76|70|71|33)[0-9]{7}$/)
     .required()
     .messages({
@@ -32,7 +34,7 @@ const registerSchema = Joi.object({
         // "Phone must be a valid Senegalese number (9 digits starting with 77, 78, 76, 70, 71, or 33)",
       "Format téléphone incorrect (9 chiffres commençant avec 77, 78, 76, 70, 71, ou 33)",
       "any.required": "Le téléphone est requis",
-      "any.empty": "Le téléphone est requis",
+      "string.empty": "Le téléphone est requis",
     }),
 });
 
@@ -41,11 +43,11 @@ const loginSchema = Joi.object({
     // "string.email": "Email must be a valid email address",
     "string.email": "Format email incorrect",
     "any.required": "Email obligatoire",
-    "any.empty": "Email obligatoire",
+    "string.empty": "Email obligatoire",
   }),
   password: Joi.string().required().messages({
     "any.required": "Password obligatoire",
-    "any.empty": "Password obligatoire",
+    "string.empty": "Password obligatoire",
   }),
 });
 
