@@ -22,7 +22,8 @@ exports.register = asyncHandler(async (req, res) => {
   const { email, password, firstName, lastName, phone } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return error(res, 409, "Email already registered");
+  // if (existing) return error(res, 409, "Email already registered");
+  if (existing) return error(res, 409, "Email déjà pris");
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
@@ -57,11 +58,14 @@ exports.login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return error(res, 401, "Invalid credentials");
-  if (!user.isActive) return error(res, 403, "Account is disabled");
+  // if (!user) return error(res, 401, "Invalid credentials");
+  if (!user) return error(res, 401, "Identifiants invalides");
+  // if (!user.isActive) return error(res, 403, "Account is disabled");
+  if (!user.isActive) return error(res, 403, "Compte désactivé");
 
   const isMatch = await bcrypt.compare(password, user.passwordHash);
-  if (!isMatch) return error(res, 401, "Invalid credentials");
+  // if (!isMatch) return error(res, 401, "Invalid credentials");
+  if (!isMatch) return error(res, 401, "Identifiants invalides");
 
   const updated = await prisma.user.update({
     where: { id: user.id },

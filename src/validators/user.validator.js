@@ -7,7 +7,8 @@ const baseSchema = {
   .max(255)
   .required()
   .messages({
-    "string.email": "Email must be a valid email address",
+    // "string.email": "Email must be a valid email address",
+    "string.email": "Format email invalide",
     "string.max": "Email must not exceed 255 characters",
     "any.required": "Email is required",
   }),
@@ -29,9 +30,10 @@ const baseSchema = {
     .required()
     .messages({
       "string.pattern.base":
-        "Phone must be a valid Senegalese number (9 digits starting with 77, 78, 76, 70, 71, or 33)",
+      "Format téléphone incorrect (9 chiffres commençant avec 77, 78, 76, 70, 71, ou 33)",
       "any.required": "Phone is required",
-    }),
+    }), 
+    // "Phone must be a valid Senegalese number (9 digits starting with 77, 78, 76, 70, 71, or 33)",
 };
 
 //
