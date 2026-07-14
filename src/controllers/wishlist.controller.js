@@ -1,6 +1,7 @@
 const prisma = require("../utils/prisma");
 const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
+const { PUBLIC_PRODUCT_OMIT, publicProductWithImages } = require("../utils/publicViews");
 
 exports.getMyWishlist = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -8,6 +9,7 @@ exports.getMyWishlist = asyncHandler(async (req, res) => {
     where: { userId },
     include: {
       product: {
+        omit: PUBLIC_PRODUCT_OMIT,
         include: { images: true, brand: true, category: true },
       },
     },
@@ -30,7 +32,7 @@ exports.addToWishlist = asyncHandler(async (req, res) => {
 
   const item = await prisma.wishlistItem.create({
     data: { userId, productId },
-    include: { product: { include: { images: true } } },
+    include: { product: publicProductWithImages },
   });
   return success(res, 201, "Product added to wishlist", item);
 });

@@ -24,6 +24,7 @@ router.post(
   checkExistMultiple([
     { model: "category", field: "categoryId" },
     { model: "brand", field: "brandId" },
+    { model: "supplier", field: "supplierId" },
   ]),
   productController.create,
 );
@@ -38,6 +39,7 @@ router.put(
   checkExistMultiple([
     { model: "category", field: "categoryId" },
     { model: "brand", field: "brandId" },
+    { model: "supplier", field: "supplierId" },
   ]),
   productController.update,
 );

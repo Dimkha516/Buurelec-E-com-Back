@@ -1,6 +1,7 @@
 const prisma = require("../../utils/prisma");
 const asyncHandler = require("../../utils/asyncHandler");
 const { success, error } = require("../../utils/apiResponse");
+const { getCasualSupplier } = require("../../services/supplierService");
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
@@ -9,6 +10,7 @@ const MAX_LIMIT = 100;
 const productInclude = {
   category: true,
   brand: true,
+  supplier: true,
   images: { orderBy: { sortOrder: "asc" } },
   features: { orderBy: { sortOrder: "asc" } },
 };
@@ -26,6 +28,7 @@ const buildListFilters = (query) => {
   }
   if (query.categoryId) where.categoryId = query.categoryId;
   if (query.brandId) where.brandId = query.brandId;
+  if (query.supplierId) where.supplierId = query.supplierId;
   if (query.badge) where.badge = query.badge;
 
   if (query.isActive === "true") where.isActive = true;
@@ -106,8 +109,15 @@ const getOne = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
+  // Default to the Casual supplier when the admin doesn't pick one.
+  const data = { ...req.body };
+  if (!data.supplierId) {
+    const casual = await getCasualSupplier();
+    data.supplierId = casual.id;
+  }
+
   const product = await prisma.product.create({
-    data: req.body,
+    data,
     include: productInclude,
   });
   return success(res, 201, "Product created successfully", product);

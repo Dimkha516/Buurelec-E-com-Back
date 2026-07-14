@@ -2,13 +2,14 @@ const crudController = require("./crud.controller");
 const prisma = require("../utils/prisma");
 const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
+const { publicProductWithImages } = require("../utils/publicViews");
 
 const base = crudController("cart");
 
 const cartInclude = {
   items: {
     include: {
-      product: { include: { images: true } },
+      product: publicProductWithImages,
     },
     orderBy: { createdAt: "asc" },
   },
@@ -45,7 +46,7 @@ const addToCart = asyncHandler(async (req, res) => {
     where: { cartId_productId: { cartId: cart.id, productId } },
     create: { cartId: cart.id, productId, quantity },
     update: { quantity: { increment: quantity } },
-    include: { product: { include: { images: true } } },
+    include: { product: publicProductWithImages },
   });
 
   return success(res, 201, "Product added to cart", item);

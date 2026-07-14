@@ -86,6 +86,7 @@ const adminUsersRouter = require("./src/routes/admin/user.routes");
 const adminBannersRouter = require("./src/routes/admin/banner.routes");
 const adminDealsRouter = require("./src/routes/admin/deal.routes");
 const adminSettingsRouter = require("./src/routes/admin/setting.routes");
+const adminSuppliersRouter = require("./src/routes/admin/supplier.routes");
 
 // ROUTES USE:
 app.use(`${baseUrl}/auth`, authRouter);
@@ -124,6 +125,7 @@ app.use(`${baseUrl}/admin/users`, adminUsersRouter);
 app.use(`${baseUrl}/admin/banners`, adminBannersRouter);
 app.use(`${baseUrl}/admin/deals`, adminDealsRouter);
 app.use(`${baseUrl}/admin/settings`, adminSettingsRouter);
+app.use(`${baseUrl}/admin/suppliers`, adminSuppliersRouter);
 
 // CLOSING LINE: Run Server
 app.listen(PORT, () => {
