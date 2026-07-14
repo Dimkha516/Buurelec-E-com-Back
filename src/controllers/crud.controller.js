@@ -1,6 +1,7 @@
 const prisma = require("../utils/prisma");
 const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
+const { publicProduct, publicProductWithImages } = require("../utils/publicViews");
 
 // Relation includes par modèle
 const modelIncludes = {
@@ -29,6 +30,9 @@ const modelIncludes = {
     features: true,
     reviews: true,
   },
+  supplier: {
+    _count: { select: { products: true } },
+  },
   productImage: {
     product: { select: { id: true, name: true, slug: true } },
   },
@@ -41,11 +45,11 @@ const modelIncludes = {
   },
   cart: {
     user: { select: { id: true, firstName: true, lastName: true, email: true } },
-    items: { include: { product: true } },
+    items: { include: { product: publicProduct } },
   },
   cartItem: {
     cart: true,
-    product: true,
+    product: publicProduct,
   },
   order: {
     user: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -61,7 +65,7 @@ const modelIncludes = {
   },
   wishlistItem: {
     user: { select: { id: true, firstName: true, lastName: true } },
-    product: { include: { images: true } },
+    product: publicProductWithImages,
   },
   deal: {
     products: {
@@ -78,7 +82,7 @@ const modelIncludes = {
   },
   dealProduct: {
     deal: true,
-    product: true,
+    product: publicProduct,
   },
   newsletterSubscriber: {
     user: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -102,13 +106,18 @@ const MAX_LIMIT = 100;
 
 const crudController = (model, options = {}) => {
   const include = options.include ?? modelIncludes[model] ?? {};
+  const omit = options.omit;
+
+  // Build the shared query args once. Prisma rejects an empty `omit: {}`, so
+  // only include the key when the caller actually passed one.
+  const readArgs = omit ? { include, omit } : { include };
 
   return {
     // CREATE:
     create: asyncHandler(async (req, res) => {
       const record = await prisma[model].create({
         data: req.body,
-        include,
+        ...readArgs,
       });
       success(res, 201, `${model} created successfully`, record);
     }),
@@ -123,7 +132,7 @@ const crudController = (model, options = {}) => {
         prisma[model].findMany({
           skip,
           take: limit,
-          include,
+          ...readArgs,
           orderBy: defaultOrderBy[model] ?? { createdAt: "desc" },
         }),
         prisma[model].count(),
@@ -152,7 +161,7 @@ const crudController = (model, options = {}) => {
       try {
         record = await prisma[model].findUnique({
           where: { id: param },
-          include,
+          ...readArgs,
         });
       } catch (_) {
         record = null;
@@ -164,7 +173,7 @@ const crudController = (model, options = {}) => {
         try {
           record = await prisma[model].findFirst({
             where: { slug: param },
-            include,
+            ...readArgs,
           });
         } catch (_) {
           record = null;
@@ -181,7 +190,7 @@ const crudController = (model, options = {}) => {
       const record = await prisma[model].update({
         where: { id },
         data: req.body,
-        include,
+        ...readArgs,
       });
       return success(res, 200, `${model} updated successfully`, record);
     }),
@@ -193,7 +202,7 @@ const crudController = (model, options = {}) => {
         where: { id },
       });
       return success(res, 200, `${model} deleted successfully`);
-    }), 
+    }),
   };
 };
 

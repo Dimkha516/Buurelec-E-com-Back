@@ -16,6 +16,12 @@ const baseSchema = {
   originalPrice: Joi.number().precision(2).positive().allow(null).messages({
     "number.positive": "Original price must be a positive number",
   }),
+  buyPrice: Joi.number().precision(2).min(0).default(0).messages({
+    "number.min": "Buy price cannot be negative",
+  }),
+  supplierId: Joi.string().uuid().allow(null).messages({
+    "string.guid": "Supplier ID must be a valid UUID",
+  }),
   sku: Joi.string().allow(null, ""),
   stock: Joi.number().integer().min(0).default(0).messages({
     "number.min": "Stock cannot be negative",

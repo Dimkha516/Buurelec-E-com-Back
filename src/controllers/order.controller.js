@@ -6,6 +6,7 @@ const { sendEmail } = require("../services/mailService");
 const { getSettings } = require("../services/settingsService");
 const orderConfirmationTemplate = require("../templates/orderConfirmationTemplate");
 const orderCancellationTemplate = require("../templates/orderCancellationTemplate");
+const { publicProductWithImages } = require("../utils/publicViews");
 
 const CANCELLABLE_STATUSES = ["PENDING", "CONFIRMED"];
 
@@ -22,7 +23,7 @@ const orderInclude = {
   shippingAddress: true,
   billingAddress: true,
   pickupPoint: true,
-  items: { include: { product: { include: { images: true } } } },
+  items: { include: { product: publicProductWithImages } },
 };
 
 const generateOrderNumber = async () => {
