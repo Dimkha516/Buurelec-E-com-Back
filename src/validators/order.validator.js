@@ -1,5 +1,15 @@
 const Joi = require("joi");
 
+// GPS coordinates captured on the client via the browser Geolocation API,
+// used when the customer chooses "use my current location".
+const coordinatesSchema = Joi.object({
+  latitude: Joi.number().min(-90).max(90).required(),
+  longitude: Joi.number().min(-180).max(180).required(),
+}).messages({
+  "any.required":
+    "Latitude and longitude are required to use your current location",
+});
+
 const checkoutSchema = Joi.object({
   deliveryMethod: Joi.string()
     .valid("HOME_DELIVERY", "PICKUP_POINT")
@@ -9,12 +19,20 @@ const checkoutSchema = Joi.object({
     .uuid()
     .when("deliveryMethod", {
       is: "HOME_DELIVERY",
-      then: Joi.required(),
+      then: Joi.optional(),
       otherwise: Joi.forbidden(),
     })
     .messages({
-      "any.required": "Shipping address is required for home delivery",
       "any.unknown": "Shipping address is only allowed for home delivery",
+    }),
+  coordinates: coordinatesSchema
+    .when("deliveryMethod", {
+      is: "HOME_DELIVERY",
+      then: Joi.optional(),
+      otherwise: Joi.forbidden(),
+    })
+    .messages({
+      "any.unknown": "Current location is only allowed for home delivery",
     }),
   pickupPointId: Joi.string()
     .uuid()
@@ -52,8 +70,18 @@ const checkoutSchema = Joi.object({
   if (value.paymentMethod === "CASH" && value.paymentTiming !== "ON_DELIVERY") {
     return helpers.message("Cash payment is only available on delivery");
   }
+  // Home delivery needs exactly one target: a saved address OR current location.
+  if (value.deliveryMethod === "HOME_DELIVERY") {
+    const hasAddress = Boolean(value.shippingAddressId);
+    const hasCoords = Boolean(value.coordinates);
+    if (hasAddress === hasCoords) {
+      return helpers.message(
+        "For home delivery, provide either a shipping address or your current location",
+      );
+    }
+  }
   return value;
-}, "payment combination validation");
+}, "checkout combination validation");
 
 const baseSchema = {
   orderNumber: Joi.string().required().messages({
@@ -138,7 +166,7 @@ const guestCheckoutSchema = Joi.object({
       .required()
       .messages({
         "string.pattern.base":
-          "Phone must be a valid Senegalese number (9 digits starting with 77, 78, 76, 70, 71, or 33)",
+          "Format téléphone incorrect (9 chiffres commençant avec 77, 78, 76, 70, 71, ou 33)",
       }),
   })
     .required()
@@ -155,12 +183,20 @@ const guestCheckoutSchema = Joi.object({
   })
     .when("deliveryMethod", {
       is: "HOME_DELIVERY",
-      then: Joi.required(),
+      then: Joi.optional(),
       otherwise: Joi.forbidden(),
     })
     .messages({
-      "any.required": "Address is required for home delivery",
       "any.unknown": "Address is only allowed for home delivery",
+    }),
+  coordinates: coordinatesSchema
+    .when("deliveryMethod", {
+      is: "HOME_DELIVERY",
+      then: Joi.optional(),
+      otherwise: Joi.forbidden(),
+    })
+    .messages({
+      "any.unknown": "Current location is only allowed for home delivery",
     }),
   pickupPointId: Joi.string()
     .uuid()
@@ -193,12 +229,26 @@ const guestCheckoutSchema = Joi.object({
   if (value.paymentMethod === "CASH" && value.paymentTiming !== "ON_DELIVERY") {
     return helpers.message("Cash payment is only available on delivery");
   }
+  // Home delivery needs exactly one target: a typed address OR current location.
+  if (value.deliveryMethod === "HOME_DELIVERY") {
+    const hasAddress = Boolean(value.address);
+    const hasCoords = Boolean(value.coordinates);
+    if (hasAddress === hasCoords) {
+      return helpers.message(
+        "For home delivery, provide either an address or your current location",
+      );
+    }
+  }
   return value;
-}, "payment combination validation");
+}, "guest checkout combination validation");
+
+// Body of the public reverse-geocode endpoint: just GPS coordinates.
+const reverseGeocodeSchema = coordinatesSchema.required();
 
 module.exports = {
   createOrderSchema,
   updateOrderSchema,
   checkoutSchema,
   guestCheckoutSchema,
+  reverseGeocodeSchema,
 };

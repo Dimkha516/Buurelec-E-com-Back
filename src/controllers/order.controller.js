@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { success, error } = require("../utils/apiResponse");
 const { sendEmail } = require("../services/mailService");
 const { getSettings } = require("../services/settingsService");
+const { reverseGeocodeToAddress } = require("../services/geocodingService");
 const orderConfirmationTemplate = require("../templates/orderConfirmationTemplate");
 const orderCancellationTemplate = require("../templates/orderCancellationTemplate");
 const { publicProductWithImages } = require("../utils/publicViews");
@@ -47,6 +48,7 @@ const checkout = asyncHandler(async (req, res) => {
   const {
     deliveryMethod,
     shippingAddressId,
+    coordinates,
     pickupPointId,
     paymentMethod,
     paymentTiming,
@@ -54,10 +56,16 @@ const checkout = asyncHandler(async (req, res) => {
     notes,
   } = req.body;
 
-  // 0. Load user (for email)
+  // 0. Load user (for email + as the owner of a location-based address)
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, firstName: true, lastName: true },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+    },
   });
 
   // 1. Load cart with items
@@ -69,13 +77,27 @@ const checkout = asyncHandler(async (req, res) => {
     return error(res, 400, "Your cart is empty");
   }
 
-  // 2. Validate delivery target belongs to / exists
+  // 2. Validate delivery target belongs to / exists.
+  // For home delivery the customer either picks a saved address or shares
+  // their current location (coordinates), which we reverse-geocode here.
+  let geocodedAddress = null;
   if (deliveryMethod === "HOME_DELIVERY") {
-    const address = await prisma.address.findFirst({
-      where: { id: shippingAddressId, userId },
-    });
-    if (!address) {
-      return error(res, 404, "Shipping address not found");
+    if (coordinates) {
+      try {
+        geocodedAddress = await reverseGeocodeToAddress(
+          coordinates.latitude,
+          coordinates.longitude,
+        );
+      } catch (e) {
+        return error(res, e.statusCode || 502, e.message);
+      }
+    } else {
+      const address = await prisma.address.findFirst({
+        where: { id: shippingAddressId, userId },
+      });
+      if (!address) {
+        return error(res, 404, "Shipping address not found");
+      }
     }
   } else {
     const pickupPoint = await prisma.pickupPoint.findUnique({
@@ -113,6 +135,31 @@ const checkout = asyncHandler(async (req, res) => {
 
   // 6. Create order + items + decrement stock + clear cart in a transaction
   const order = await prisma.$transaction(async (tx) => {
+    // Persist a new address for the shared current location, otherwise reuse
+    // the saved address the customer selected.
+    let finalShippingAddressId = null;
+    if (deliveryMethod === "HOME_DELIVERY") {
+      if (geocodedAddress) {
+        const addr = await tx.address.create({
+          data: {
+            userId,
+            label: "Position actuelle",
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phone: user.phone || null,
+            street: geocodedAddress.street,
+            city: geocodedAddress.city,
+            state: geocodedAddress.state,
+            zipCode: geocodedAddress.zipCode,
+            country: geocodedAddress.country,
+          },
+        });
+        finalShippingAddressId = addr.id;
+      } else {
+        finalShippingAddressId = shippingAddressId;
+      }
+    }
+
     const created = await tx.order.create({
       data: {
         orderNumber,
@@ -123,8 +170,8 @@ const checkout = asyncHandler(async (req, res) => {
         taxAmount: 0,
         totalAmount,
         deliveryMethod,
-        shippingAddressId: deliveryMethod === "HOME_DELIVERY" ? shippingAddressId : null,
-        billingAddressId: deliveryMethod === "HOME_DELIVERY" ? shippingAddressId : null,
+        shippingAddressId: finalShippingAddressId,
+        billingAddressId: finalShippingAddressId,
         pickupPointId: deliveryMethod === "PICKUP_POINT" ? pickupPointId : null,
         paymentMethod,
         paymentTiming,
@@ -174,6 +221,7 @@ const guestCheckout = asyncHandler(async (req, res) => {
     guest,
     deliveryMethod,
     address,
+    coordinates,
     pickupPointId,
     paymentMethod,
     paymentTiming,
@@ -216,6 +264,20 @@ const guestCheckout = asyncHandler(async (req, res) => {
     }
   }
 
+  // 3b. For home delivery, resolve the shipping address: either the typed
+  // address or the shared current location (reverse-geocoded here).
+  let deliveryAddress = address || null;
+  if (deliveryMethod === "HOME_DELIVERY" && coordinates) {
+    try {
+      deliveryAddress = await reverseGeocodeToAddress(
+        coordinates.latitude,
+        coordinates.longitude,
+      );
+    } catch (e) {
+      return error(res, e.statusCode || 502, e.message);
+    }
+  }
+
   // 4. Compute totals
   const subtotal = items.reduce(
     (sum, item) =>
@@ -235,14 +297,15 @@ const guestCheckout = asyncHandler(async (req, res) => {
       const addr = await tx.address.create({
         data: {
           userId: null,
+          label: coordinates ? "Position actuelle" : null,
           firstName: guest.firstName,
           lastName: guest.lastName,
           phone: guest.phone,
-          street: address.street,
-          city: address.city,
-          zipCode: address.zipCode,
-          country: address.country,
-          state: address.state || null,
+          street: deliveryAddress.street,
+          city: deliveryAddress.city,
+          zipCode: deliveryAddress.zipCode,
+          country: deliveryAddress.country,
+          state: deliveryAddress.state || null,
         },
       });
       shippingAddressId = addr.id;
@@ -307,6 +370,18 @@ const guestCheckout = asyncHandler(async (req, res) => {
   }).catch((e) => console.error("Guest order email failed:", e));
 
   return success(res, 201, "Order placed successfully", order);
+});
+
+// Public helper so the checkout page can preview the human-readable delivery
+// address before placing the order (same normalization used at checkout).
+const reverseGeocode = asyncHandler(async (req, res) => {
+  const { latitude, longitude } = req.body;
+  try {
+    const address = await reverseGeocodeToAddress(latitude, longitude);
+    return success(res, 200, "Location resolved successfully", address);
+  } catch (e) {
+    return error(res, e.statusCode || 502, e.message);
+  }
 });
 
 const getMyOrders = asyncHandler(async (req, res) => {
@@ -393,6 +468,7 @@ module.exports = {
   ...base,
   checkout,
   guestCheckout,
+  reverseGeocode,
   getMyOrders,
   getMyOrder,
   cancelOrder,
